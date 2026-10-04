@@ -1,0 +1,54 @@
+# Supabase Configuration
+# This file is used by the Supabase CLI
+
+project_id = "zkwygndhnupmzklcanzo"
+db_port = 54322
+api_port = 54321
+studio_port = 54323
+inbucket_port = 54324
+jwt_secret = "your-jwt-secret"
+anon_key = "your-anon-key"
+service_role_key = "your-service-role-key"
+
+# Database
+db_major_version = 15
+
+# Auth
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+enable_signup = true
+enable_anonymous_sign_ins = false
+min_password_length = 8
+password_requirements = "lower_upper_letters_digits_symbols"
+
+# Email
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_email_change = true
+template_subject = "Confirm your email for Our Family History"
+template_content = "Click the link to confirm: {{ .ConfirmationURL }}"
+
+# SMS (optional)
+[auth.sms]
+enable_signup = false
+
+# External providers
+[auth.external]
+google = { enabled = false, client_id = "", secret = "" }
+github = { enabled = false, client_id = "", secret = "" }
+
+# Storage
+[storage]
+file_size_limit = "50MiB"
+image_transformation = { enabled = true }
+
+# Realtime
+[realtime]
+enabled = true
+
+# Logs
+[logs]
+level = "info"
