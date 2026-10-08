@@ -2,12 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, TreePine, Clock, Users, PenTool, Plus, Search, Sparkles, Clock as ClockIcon, Image, FileText } from "lucide-react";
+import { Navbar } from "@/components/layout/Navbar";
 
 async function getDashboardData() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  if (!user) return { user: null, stories: [], people: [], timelineEvents: [], autobiographySessions: [], documents: [], photos: [], recentActivity: [] };
 
   const { data: membership } = await supabase
     .from("family_members")
@@ -17,7 +18,7 @@ async function getDashboardData() {
     .limit(1)
     .maybeSingle();
 
-  if (!membership) redirect("/onboarding");
+  if (!membership) return { user, stories: [], people: [], timelineEvents: [], autobiographySessions: [], documents: [], photos: [], recentActivity: [] };
 
   const familyId = membership.family_id;
 
@@ -64,22 +65,15 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  // Middleware handles auth; user should exist here
+  if (!user) {
+    return <div className="min-h-screen flex items-center justify-center"><div className="animate-pulse">Loading...</div></div>;
+  }
 
   let stories: any[] = [], people: any[] = [], timelineEvents: any[] = [], recentActivity: any[] = [];
   let autobiographySessions: any[] = [], documents: any[] = [], photos: any[] = [];
 
   try {
-    const { data: membership } = await supabase
-      .from("family_members")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .limit(1)
-      .maybeSingle();
-
-    if (!membership) redirect("/onboarding");
-
     const dashboardData = await getDashboardData();
     stories = dashboardData.stories;
     people = dashboardData.people;
@@ -92,30 +86,28 @@ export default async function DashboardPage() {
     console.error("Failed to load dashboard data:", error);
   }
 
+  // Check if user has family membership
+  const hasMembership = stories.length > 0 || people.length > 0 || timelineEvents.length > 0 || autobiographySessions.length > 0 || documents.length > 0 || photos.length > 0;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
-            <Link href="/dashboard" className="flex items-center gap-2 text-xl font-display font-bold text-foreground">
-              <BookOpen className="w-7 h-7 text-primary-600" aria-hidden="true" />
-              <span>Our Family History</span>
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link href="/search" className="hidden sm:flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors">
-                <Search className="w-4 h-4" aria-hidden="true" />
-                <span>Search stories, people...</span>
+      <Navbar />
+      <main className="container mx-auto px-4 py-8">
+        {!hasMembership && (
+          <div className="mb-8 text-center">
+            <div className="bg-muted/50 rounded-xl p-8">
+              <Users className="w-12 h-12 text-primary-600 mx-auto mb-4" aria-hidden="true" />
+              <h2 className="font-display text-xl font-semibold text-foreground mb-2">No Family Yet</h2>
+              <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
+                You're not part of a family yet. Complete onboarding to create or join a family.
+              </p>
+              <Link href="/onboarding" className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                Complete Onboarding
+                <Plus className="w-4 h-4" aria-hidden="true" />
               </Link>
-              <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-medium">
-                {user.user_metadata?.full_name?.[0] || user.email?.[0]?.toUpperCase() || "U"}
-              </div>
             </div>
           </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
+        )}
         {/* Welcome Section */}
         <section className="mb-8">
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-6 sm:p-8 text-white">
