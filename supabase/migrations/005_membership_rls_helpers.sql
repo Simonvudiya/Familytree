@@ -41,10 +41,15 @@ GRANT EXECUTE ON FUNCTION public.has_family_role(uuid, public.user_role[]) TO au
 
 DROP POLICY IF EXISTS "Members can view family members" ON public.family_members;
 DROP POLICY IF EXISTS "Admins can manage members" ON public.family_members;
+DROP POLICY IF EXISTS "Users can view their own membership" ON public.family_members;
 
 CREATE POLICY "Members can view family members" ON public.family_members
   FOR SELECT
   USING (public.is_active_family_member(family_id));
+
+CREATE POLICY "Users can view their own membership" ON public.family_members
+  FOR SELECT
+  USING (user_id = auth.uid());
 
 CREATE POLICY "Admins can manage members" ON public.family_members
   FOR ALL

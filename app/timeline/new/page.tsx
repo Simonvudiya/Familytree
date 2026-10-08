@@ -1,19 +1,19 @@
 import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { NewStoryClient } from "./NewStoryClient";
+import { NewTimelineEventClient } from "./NewTimelineEventClient";
 
 export const metadata: Metadata = {
-  title: "Write New Story | Our Family History",
-  description: "Create a new family story",
+  title: "Add Timeline Event | Our Family History",
+  description: "Create a new family timeline event",
 };
 
-export default async function NewStoryPage() {
+export default async function NewTimelineEventPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?redirectTo=/stories/new");
+    redirect("/login?redirectTo=/timeline/new");
   }
 
   const { data: membership } = await supabase
@@ -28,5 +28,5 @@ export default async function NewStoryPage() {
     redirect("/onboarding");
   }
 
-  return <NewStoryClient />;
+  return <NewTimelineEventClient />;
 }

@@ -111,7 +111,7 @@ export function TimelineClient() {
             <h1 className="font-display text-3xl font-bold text-foreground">Family Timeline</h1>
             <p className="text-muted-foreground mt-1">View your family's history chronologically</p>
           </div>
-          <Link href="/timeline?new=true">
+          <Link href="/timeline/new">
             <Button>
               <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
               Add Event
@@ -231,7 +231,7 @@ export function TimelineClient() {
           <Button variant="outline" size="sm" onClick={() => setViewMode("list")}>
             List View
           </Button>
-          <Link href="/timeline?new=true">
+          <Link href="/timeline/new">
             <Button>
               <Plus className="w-4 h-4 mr-2" aria-hidden="true" />
               Add Event

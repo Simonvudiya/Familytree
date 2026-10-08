@@ -44,19 +44,27 @@ export function NewStoryClient() {
 
   const handleSubmit = async (e: React.FormEvent, publish = false) => {
     e.preventDefault();
+    console.log("[NewStoryClient] handleSubmit called, publish:", publish, "formData:", formData);
     setError("");
     setSaving(true);
 
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
+      console.log("[NewStoryClient] user:", user?.id);
 
       if (!user) throw new Error("Not authenticated");
-      if (!family) throw new Error("No family selected");
+      if (!family) {
+        console.warn("[NewStoryClient] No family, redirecting to onboarding");
+        router.push("/onboarding");
+        return;
+      }
 
       const wordCount = formData.content.split(/\s+/).filter(Boolean).length;
       const readingTime = Math.ceil(wordCount / 200);
       const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
+      console.log("[NewStoryClient] slug:", uniqueSlug);
 
       const { data: story, error } = await supabase
         .from("stories")
@@ -64,7 +72,7 @@ export function NewStoryClient() {
           family_id: family.id,
           author_id: user.id,
           title: formData.title,
-          slug,
+          slug: uniqueSlug,
           content: formData.content,
           excerpt: formData.excerpt,
           event_date: formData.event_date || null,
@@ -81,17 +89,28 @@ export function NewStoryClient() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[NewStoryClient] Insert error:", JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      console.log("[NewStoryClient] Story created:", story);
 
       if (formData.people_ids?.length) {
-        await supabase.from("story_people").insert(
+        console.log("[NewStoryClient] Adding story_people:", formData.people_ids);
+        const { error: peopleError } = await supabase.from("story_people").insert(
           formData.people_ids.map((person_id) => ({ story_id: story.id, person_id }))
         );
+        if (peopleError) {
+          console.error("[NewStoryClient] story_people error:", JSON.stringify(peopleError, null, 2));
+          throw peopleError;
+        }
       }
 
       router.push(`/stories/${story.id}`);
       router.refresh();
     } catch (err) {
+      console.error("[NewStoryClient] Unexpected error:", err);
       setError(err instanceof Error ? err.message : "Failed to create story");
     } finally {
       setSaving(false);
@@ -290,7 +309,10 @@ function PeopleSelector({ familyId, selectedIds, onChange }: { familyId?: string
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!familyId) return;
+    if (!familyId) {
+      setLoading(false);
+      return;
+    }
     const fetchPeople = async () => {
       const supabase = createClient();
       const { data } = await supabase

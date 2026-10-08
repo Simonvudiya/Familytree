@@ -10,11 +10,19 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const supabase = await getServerSession();
   const { id } = await params;
-  const { data: story } = await supabase
+  const { data: story, error } = await supabase
     .from("stories")
     .select("title, excerpt")
     .eq("id", id)
-    .single();
+    .maybeSingle();
+
+  if (error) {
+    console.error("[StoryDetailPage:generateMetadata] Database error:", {
+      code: error.code,
+      message: error.message,
+      id,
+    });
+  }
   
   return {
     title: story?.title ? `${story.title} | Our Family History` : "Story | Our Family History",
@@ -31,14 +39,26 @@ export default async function StoryDetailPage({ params }: Props) {
     .from("stories")
     .select(`
       *,
-      author:profiles!author_id(id, full_name, avatar_url),
+      author:family_history_profiles!author_id(id, full_name, avatar_url),
       story_people(people:person_id(id, name, birth_date, death_date, profile_image)),
       story_versions(id, title, created_at, created_by, change_summary)
     `)
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (error || !story) {
+  if (error) {
+    console.error("[StoryDetailPage] Database error:", {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      id,
+    });
+    throw error;
+  }
+
+  if (!story) {
+    console.warn("[StoryDetailPage] Story not found:", id);
     notFound();
   }
 

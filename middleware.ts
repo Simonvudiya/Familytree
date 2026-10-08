@@ -49,6 +49,8 @@ export async function middleware(request: NextRequest) {
     "/compiler",
     "/admin",
     "/settings",
+    "/documents",
+    "/photos",
   ];
 
   const isProtectedPath = protectedPaths.some((path) =>

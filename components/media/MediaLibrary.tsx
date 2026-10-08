@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, FileText, Image as ImageIcon, Loader2, Upload } from "lucide-react";
+import { Download, FileText, Image as ImageIcon, Loader2, Upload, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useFamily } from "@/hooks/useFamily";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
@@ -26,12 +26,19 @@ const formatSize = (size: number) => {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const isPreviewable = (mimeType: string) => {
+  return mimeType === "application/pdf" || mimeType.startsWith("image/") || mimeType === "text/plain";
+};
+
 export function MediaLibrary({ kind }: MediaLibraryProps) {
-  const { family } = useFamily();
+  const { family, loading: familyLoading } = useFamily();
+  console.log("[MediaLibrary] family:", family, "loading:", familyLoading);
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<MediaItem | null>(null);
+  const [previewPage, setPreviewPage] = useState(1);
 
   const fetchItems = useCallback(async () => {
     if (!family) {
@@ -80,6 +87,18 @@ export function MediaLibrary({ kind }: MediaLibraryProps) {
     } finally {
       setUploading(false);
     }
+  };
+
+  const openPreview = (item: MediaItem) => {
+    if (isPreviewable(item.mime_type)) {
+      setPreviewItem(item);
+      setPreviewPage(1);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewItem(null);
+    setPreviewPage(1);
   };
 
   const isImage = kind === "image";
@@ -143,12 +162,17 @@ export function MediaLibrary({ kind }: MediaLibraryProps) {
         <div className="divide-y divide-border border-y border-border">
           {items.map((item) => (
             <div key={item.id} className="flex items-center justify-between gap-4 py-4">
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3 cursor-pointer" onClick={() => openPreview(item)}>
                 <FileText className="h-5 w-5 flex-none text-primary-600" aria-hidden="true" />
                 <div className="min-w-0">
                   <p className="truncate font-medium" title={item.filename}>{item.filename}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{item.mime_type} · {formatSize(item.size)} · {new Date(item.created_at).toLocaleDateString()}</p>
                 </div>
+                {isPreviewable(item.mime_type) && (
+                  <Button variant="ghost" size="icon" className="ml-2">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <a
                 href={item.url}
@@ -162,6 +186,47 @@ export function MediaLibrary({ kind }: MediaLibraryProps) {
               </a>
             </div>
           ))}
+        </div>
+      )}
+
+      {previewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={closePreview}>
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="font-display text-lg font-semibold truncate">{previewItem.filename}</h3>
+              <div className="flex items-center gap-2">
+                {previewItem.mime_type === "application/pdf" && (
+                  <>
+                    <Button variant="ghost" size="icon" onClick={() => setPreviewPage((p) => Math.max(1, p - 1))} disabled={previewPage <= 1}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-muted-foreground w-20 text-center">Page {previewPage}</span>
+                    <Button variant="ghost" size="icon" onClick={() => setPreviewPage((p) => p + 1)}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                <Button variant="ghost" size="icon" onClick={closePreview} className="ml-2">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              {previewItem.mime_type === "application/pdf" ? (
+                <iframe
+                  src={`${previewItem.url}#page=${previewPage}&zoom=100`}
+                  className="w-full h-[70vh] border-0"
+                  title={`Preview of ${previewItem.filename}`}
+                />
+              ) : previewItem.mime_type.startsWith("image/") ? (
+                <img src={previewItem.url} alt={previewItem.filename} className="max-w-full max-h-[70vh] object-contain" />
+              ) : previewItem.mime_type === "text/plain" ? (
+                <pre className="whitespace-pre-wrap font-mono text-sm max-h-[70vh] overflow-auto">{previewItem.url}</pre>
+              ) : (
+                <p className="text-center text-muted-foreground py-12">Preview not available for this file type</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </main>

@@ -11,7 +11,7 @@ async function getDashboardData() {
 
   const { data: membership } = await supabase
     .from("family_members")
-    .select("id")
+    .select("family_id")
     .eq("user_id", user.id)
     .eq("status", "active")
     .limit(1)
@@ -19,20 +19,42 @@ async function getDashboardData() {
 
   if (!membership) redirect("/onboarding");
 
-  const [stories, people, timelineEvents, recentActivity] = await Promise.all([
-    supabase.from("stories").select("id, title, updated_at, status").eq("author_id", user.id).order("updated_at", { ascending: false }).limit(5),
-    supabase.from("people").select("id, name, birth_year, death_year, profile_image").order("created_at", { ascending: false }).limit(5),
-    supabase.from("timeline_events").select("id, title, date, person_id").order("date", { ascending: false }).limit(5),
+  const familyId = membership.family_id;
+
+  const [
+    stories,
+    people,
+    timelineEvents,
+    autobiographySessions,
+    documents,
+    photos,
+    recentActivity
+  ] = await Promise.all([
+    supabase.from("stories").select("id, title, updated_at, status, author_id").eq("family_id", familyId).order("updated_at", { ascending: false }).limit(5),
+    supabase.from("people").select("id, name, birth_year, death_year, profile_image").eq("family_id", familyId).order("created_at", { ascending: false }).limit(5),
+    supabase.from("timeline_events").select("id, title, date, person_id").eq("family_id", familyId).order("date", { ascending: false }).limit(5),
+    supabase.from("autobiography_sessions").select("id, person_id, status, current_chapter, completed_chapters, updated_at").eq("family_id", familyId).order("updated_at", { ascending: false }).limit(5),
+    supabase.from("documents").select("id, title, file_type, created_at").eq("family_id", familyId).order("created_at", { ascending: false }).limit(5),
+    supabase.from("media").select("id, type, url, thumbnail, filename, created_at").eq("family_id", familyId).eq("type", "image").order("created_at", { ascending: false }).limit(5),
     supabase.from("activity_log").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
   ]);
 
-  return { user, stories: stories.data || [], people: people.data || [], timelineEvents: timelineEvents.data || [], recentActivity: recentActivity.data || [] };
+  return { 
+    user, 
+    stories: stories.data || [], 
+    people: people.data || [], 
+    timelineEvents: timelineEvents.data || [],
+    autobiographySessions: autobiographySessions.data || [],
+    documents: documents.data || [],
+    photos: photos.data || [],
+    recentActivity: recentActivity.data || [] 
+  };
 }
 
 const quickActions = [
   { icon: PenTool, label: "Write Story", href: "/stories/new", color: "bg-blue-100 text-blue-600" },
   { icon: Users, label: "Add Person", href: "/people/new", color: "bg-green-100 text-green-600" },
-  { icon: ClockIcon, label: "Add Event", href: "/timeline?new=true", color: "bg-purple-100 text-purple-600" },
+  { icon: ClockIcon, label: "Add Event", href: "/timeline/new", color: "bg-purple-100 text-purple-600" },
   { icon: Image, label: "Upload Photos", href: "/photos?upload=true", color: "bg-orange-100 text-orange-600" },
   { icon: FileText, label: "Scan Document", href: "/documents?upload=true", color: "bg-pink-100 text-pink-600" },
   { icon: PenTool, label: "Start Autobiography", href: "/autobiography", color: "bg-indigo-100 text-indigo-600" },
@@ -45,6 +67,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   let stories: any[] = [], people: any[] = [], timelineEvents: any[] = [], recentActivity: any[] = [];
+  let autobiographySessions: any[] = [], documents: any[] = [], photos: any[] = [];
 
   try {
     const { data: membership } = await supabase
@@ -61,6 +84,9 @@ export default async function DashboardPage() {
     stories = dashboardData.stories;
     people = dashboardData.people;
     timelineEvents = dashboardData.timelineEvents;
+    autobiographySessions = dashboardData.autobiographySessions;
+    documents = dashboardData.documents;
+    photos = dashboardData.photos;
     recentActivity = dashboardData.recentActivity;
   } catch (error) {
     console.error("Failed to load dashboard data:", error);
@@ -99,7 +125,7 @@ export default async function DashboardPage() {
                   Welcome back, {user.user_metadata?.full_name?.split(" ")[0] || "Family Historian"}!
                 </h1>
                 <p className="text-primary-100">
-                  Continue building your family's legacy. {stories.length} stories, {people.length} people, {timelineEvents.length} timeline events.
+                  Continue building your family's legacy. {stories.length} stories, {people.length} people, {timelineEvents.length} timeline events, {autobiographySessions.length} autobiographies, {documents.length} documents, {photos.length} photos.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
@@ -203,6 +229,111 @@ export default async function DashboardPage() {
                       </p>
                     </div>
                   </div>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* Autobiography Sessions, Documents & Photos */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Recent Autobiography Sessions */}
+          <section className="bg-card border border-border rounded-xl">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold text-foreground">Autobiographies</h2>
+              <Link href="/autobiography" className="text-sm text-primary-600 hover:text-primary-700 font-medium">View all</Link>
+            </div>
+            <div className="divide-y divide-border">
+              {autobiographySessions.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <PenTool className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" aria-hidden="true" />
+                  <p>No autobiography sessions yet.</p>
+                  <Link href="/autobiography" className="mt-3 inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium">
+                    Start one
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                  </Link>
+                </div>
+              ) : (
+                autobiographySessions.map((session) => (
+                  <Link key={session.id} href={`/autobiography/${session.person_id}`} className="p-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-foreground">Chapter {session.current_chapter} of 12</p>
+                        <p className="text-sm text-muted-foreground">
+                          {session.completed_chapters?.length || 0} chapters completed · {session.status}
+                        </p>
+                      </div>
+                      <PenTool className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </section>
+
+          {/* Recent Documents */}
+          <section className="bg-card border border-border rounded-xl">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold text-foreground">Documents</h2>
+              <Link href="/documents" className="text-sm text-primary-600 hover:text-primary-700 font-medium">View all</Link>
+            </div>
+            <div className="divide-y divide-border">
+              {documents.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" aria-hidden="true" />
+                  <p>No documents yet.</p>
+                  <Link href="/documents?upload=true" className="mt-3 inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium">
+                    Upload first
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                  </Link>
+                </div>
+              ) : (
+                documents.map((doc) => (
+                  <Link key={doc.id} href={`/documents`} className="p-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-foreground truncate">{doc.title}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {doc.file_type} · {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <FileText className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </section>
+
+          {/* Recent Photos */}
+          <section className="bg-card border border-border rounded-xl">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold text-foreground">Photos</h2>
+              <Link href="/photos" className="text-sm text-primary-600 hover:text-primary-700 font-medium">View all</Link>
+            </div>
+            <div className="divide-y divide-border">
+              {photos.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Image className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" aria-hidden="true" />
+                  <p>No photos yet.</p>
+                  <Link href="/photos?upload=true" className="mt-3 inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium">
+                    Upload first
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                  </Link>
+                </div>
+              ) : (
+                photos.map((photo) => (
+                  <Link key={photo.id} href={`/photos`} className="p-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-foreground truncate">{photo.filename}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(photo.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Image className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+                    </div>
+                  </Link>
                 ))
               )}
             </div>

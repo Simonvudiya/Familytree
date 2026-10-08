@@ -111,10 +111,7 @@ jest.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-// Mock next-auth (if used)
-jest.mock("next-auth", () => ({
-  getServerSession: jest.fn().mockResolvedValue(null),
-}));
+
 
 // Mock window.matchMedia
 Object.defineProperty(window, "matchMedia", {

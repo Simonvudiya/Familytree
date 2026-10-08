@@ -24,6 +24,11 @@ export function OnboardingClient() {
     });
 
     if (createError) {
+      if (createError.message?.includes("already belong to an active family archive")) {
+        router.replace("/dashboard");
+        router.refresh();
+        return;
+      }
       setError(createError.message);
       setLoading(false);
       return;

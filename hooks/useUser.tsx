@@ -26,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log("[useUser] getUser result:", user?.id, user?.email);
       setUser(user);
       setLoading(false);
     };
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("[useUser] onAuthStateChange:", session?.user?.id, session?.user?.email);
       setUser(session?.user ?? null);
       setLoading(false);
     });

@@ -334,7 +334,7 @@ export function PersonProfileClient({ person }: PersonProfileClientProps) {
                 <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" aria-hidden="true" />
                 <h3 className="font-display text-lg font-semibold text-foreground mb-2">No timeline events</h3>
                 <p className="text-muted-foreground mb-4">This person doesn't have any timeline events yet.</p>
-                <a href="/timeline?new=true" className="inline-flex h-10 items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700">
+                <a href="/timeline/new" className="inline-flex h-10 items-center justify-center rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700">
                   Add a timeline event
                 </a>
               </CardContent>
